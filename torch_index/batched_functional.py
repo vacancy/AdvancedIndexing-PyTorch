@@ -9,17 +9,14 @@
 # Distributed under terms of the MIT license.
 
 import torch
-# TODO(Jiayuan Mao @ 05/24): remove this import.
-import jactorch
 
 from .basic_functional import tindex
 from .utils import BatchIndicator
 from .utils import prod
-from .utils import canonize_args
-from .utils import infer_batch_dims, validate_batch_dims
-from .utils import is_batched_indexing, is_batched_int_indexing, is_batched_list_indexing, is_batched_bool_indexing
-from .utils import is_int_indexing, is_list_indexing, is_bool_indexing
+from .utils import canonize_args, infer_batch_dims, validate_batch_dims
+from .utils import is_batched_indexing, is_batched_int_indexing, is_batched_list_indexing, is_batched_bool_indexing, is_int_indexing
 from .utils import get_batched_vectorized_new_dim, insert_dim
+from .torch_utils import add_dim, add_dim_as_except, length2mask
 
 
 def batched_index_int(tensor, index, dim):
@@ -74,7 +71,7 @@ def batched_index_slice(tensor, start, stop, step, dim, padding_zero=True):
         step_is_positive = step_is_positive.long()
     seg_lengths = (stop - start - step_is_positive) // step + 1
     max_seg_length = seg_lengths.max().item()
-    mask = jactorch.length2mask(seg_lengths, max_seg_length)
+    mask = length2mask(seg_lengths, max_seg_length)
 
     # indices values: [[0, 1, 0, 0, ...], [1, 2, 3, 0, ...], ...]
     # NB(Jiayuan Mao @ 05/24): torch does not support cuda-side arange.
@@ -91,7 +88,7 @@ def batched_index_slice(tensor, start, stop, step, dim, padding_zero=True):
     output = tensor.gather(2, indices)
 
     if padding_zero:
-        output = output * jactorch.add_dim_as_except(mask.type_as(output), output, 0, 2)
+        output = output * add_dim_as_except(mask.type_as(output), output, 0, 2)
 
     return output.reshape(tensor_shape[:dim] + (max_seg_length, ) + tensor_shape[dim+1:]), dim, seg_lengths.reshape(tensor_shape[:batch_dims])
 
@@ -103,7 +100,7 @@ def batched_index_vector_dim(tensor, indices, indices_length, dim, padding_zero=
 
     max_indices_length = indices.size(-1)
     if indices_length is not None:
-        mask = jactorch.length2mask(indices_length.reshape(-1), max_indices_length)
+        mask = length2mask(indices_length.reshape(-1), max_indices_length)
 
     tensor_shape = tensor.size()
     tensor = tensor.reshape(
@@ -117,7 +114,7 @@ def batched_index_vector_dim(tensor, indices, indices_length, dim, padding_zero=
     output = tensor.gather(2, indices)
 
     if padding_zero and indices_length is not None:
-        output = output * jactorch.add_dim_as_except(mask.type_as(output), output, 0, 2)
+        output = output * add_dim_as_except(mask.type_as(output), output, 0, 2)
 
     if indices_length is None:
         indices_length = torch.zeros(indices_shape[:-1], dtype=torch.long, device=tensor.device) + max_indices_length
@@ -135,7 +132,7 @@ def batched_index_vectors(tensor, indices, indices_length, dims, padding_zero=Tr
 
     max_indices_length = indices[0].size(-1)
     if indices_length is not None:
-        mask = jactorch.length2mask(indices_length.reshape(-1), max_indices_length)
+        mask = length2mask(indices_length.reshape(-1), max_indices_length)
 
     permute_dims = tuple(range(batch_dims)) + dims + tuple(i for i in range(batch_dims, tensor.dim()) if i not in dims)
     tensor = tensor.permute(permute_dims)
@@ -157,7 +154,7 @@ def batched_index_vectors(tensor, indices, indices_length, dims, padding_zero=Tr
     output = tensor.gather(1, index)
 
     if padding_zero and indices_length is not None:
-        output = output * jactorch.add_dim_as_except(mask.type_as(output), output, 0, 1)
+        output = output * add_dim_as_except(mask.type_as(output), output, 0, 1)
 
     if indices_length is None:
         indices_length = torch.zeros(indices[0].size()[:-1], dtype=torch.long, device=tensor.device) + max_indices_length
@@ -201,7 +198,7 @@ def _basic_batched_index(value, args, padding_zero=True):
     else:
         shape = torch.tensor(rest_shape)
         for i, size in enumerate(output.size()[:batch_dims]):
-            shape = jactorch.add_dim(shape, i, size)
+            shape = add_dim(shape, i, size)
 
     nr_advance_indices = len(advanced_indices)
     marked = [False for i in range(nr_advance_indices)]
