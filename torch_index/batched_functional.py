@@ -196,7 +196,7 @@ def _basic_batched_index(value, args, padding_zero=True):
     rest_dims = output.dim() - batch_dims
     rest_shape = output.size()[batch_dims:]
     if rest_dims == 0:
-        shape = 0
+        shape = torch.zeros(output.size()[:batch_dims], dtype=torch.long, device=output.device)
         assert len(advanced_indices) == 0
     else:
         shape = torch.tensor(rest_shape)
@@ -212,7 +212,7 @@ def _basic_batched_index(value, args, padding_zero=True):
             to_delete = dim - batch_dims
 
             if shape.size(-1) == 1:
-                shape = 0
+                shape = torch.zeros(output.size()[:batch_dims], dtype=torch.long, device=output.device)
             elif to_delete == 0:
                 shape = shape[..., 1:]
             elif to_delete == shape.size(-1) - 1:

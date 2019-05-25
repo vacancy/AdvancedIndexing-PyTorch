@@ -104,12 +104,19 @@ def get_vectorized_new_dim(args, allow_int=False):
     if not any(is_list_indexing(x) or is_bool_indexing(x) for x in args):
         return -1
 
+    dims = set(dims)
+    for i in range(min(dims) + 1, max(dims)):
+        if is_int_indexing(args[i]):
+            dims.add(i)
+    dims = tuple(dims)
+
     if len(dims) == max(dims) - min(dims) + 1:
         ret = min(dims)
         for i, arg in enumerate(args[:ret]):
-            if isinstance(arg, int):
+            if is_int_indexing(arg):
                 ret -= 1
         return ret
+
     return 0
 
 

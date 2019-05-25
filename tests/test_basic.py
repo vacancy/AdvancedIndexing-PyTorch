@@ -46,6 +46,8 @@ def test_basic_findex():
     yield check_indexing_numpy, torch_index.findex, a, _mi[[0], ...]
     yield check_indexing_numpy, torch_index.findex, a, _mi[3:4, [0], ...]
     yield check_indexing_numpy, torch_index.findex, a, _mi[4:2:-1, [0], ...]
+    yield check_indexing_numpy, torch_index.findex, a, _mi[[0, 1], 4:2:-1, ..., [0, 1]]
+    yield check_indexing_numpy, torch_index.findex, a, _mi[4:2:-1, [0, 1], ..., [0, 1]]
     yield check_indexing_numpy, torch_index.findex, a, _mi[:, [0], [0], :]
     yield check_indexing_numpy, torch_index.findex, a, _mi[:, [0], :, [0]]
     yield check_indexing_numpy, torch_index.findex, a, _mi[:, [0], 0, :]

@@ -24,6 +24,8 @@ def reverse(x, dim=-1):
     Reverse a tensor along the given dimension. For example, if `dim=0`, it is equivalent to
     the python notation: `x[::-1]`.
 
+    Reference: https://github.com/pytorch/pytorch/issues/229#issuecomment-350041662
+
     Args:
         x (torch.Tensor): input.
         dim: the dimension to be reversed.
@@ -32,7 +34,6 @@ def reverse(x, dim=-1):
         torch.Tensor: of same shape as `x`, but with the dimension `dim` reversed.
 
     """
-    # https://github.com/pytorch/pytorch/issues/229#issuecomment-350041662
 
     if x.numel() == 0:
         return x
@@ -61,11 +62,16 @@ def tindex(value, args):
             new_args.append(arg)
             if is_int_indexing(arg):
                 pass
+            elif is_list_indexing(arg):
+                pass
             else:
                 j += 1
 
     new_value = value[tuple(new_args)]
+    new_dim = get_vectorized_new_dim(args)
     for j in reversed_dims:
+        if j >= new_dim:
+            j += 1
         new_value = reverse(new_value, j)
     return new_value
 
@@ -75,7 +81,6 @@ def findex(value, args):
 
     new_value = tindex(value, args)
     new_dim = get_vectorized_new_dim(args, True)
-
     if new_dim != -1:
         new_value = insert_dim(new_value, get_vectorized_new_dim(args), new_dim)
     return new_value
@@ -108,7 +113,7 @@ def oindex(value, args):
                 args[i] = slice(None, None, None)
             j += 1
         else:
-            if not isinstance(arg, int):
+            if not is_int_indexing(arg):
                 j += 1
     args = tuple(args)
 
