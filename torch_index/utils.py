@@ -8,19 +8,43 @@
 # This file is part of AdvancedIndexing-PyTorch.
 # Distributed under terms of the MIT license.
 
+from functools import reduce
 import numpy as np
 import torch
 
 
-def _expand_pytorch_scalar(x):
-    if torch.is_tensor(x):
-        if x.dim() == 0:
-            return int(x.item())
-    return x
+class BatchIndicator:
+    __slots__ = tuple()
 
 
-def _clamp(x, min_value, max_value):
-    return min(max(x, min_value), max_value)
+batch = BatchIndicator()
+
+
+def prod(values, default=1):
+    if len(values) == 0:
+        return default
+    return reduce(lambda x, y: x * y, values)
+
+
+def is_batched_indexing(arg):
+    return isinstance(arg, list) or isinstance(arg, np.ndarray) or torch.is_tensor(arg) or (
+        isinstance(arg, slice) and any(map(is_batched_indexing, (arg.start, arg.stop, arg.step)))
+    )
+
+def is_batched_int_indexing(arg, batch_dims):
+    return is_batched_indexing(arg) and torch.is_tensor(arg) and arg.dim() == batch_dims
+
+
+def is_batched_list_indexing(arg, batch_dims):
+    return is_batched_indexing(arg) and torch.is_tensor(arg) and arg.dim() == batch_dims + 1
+
+
+def is_batched_bool_indexing(arg, batch_dims):
+    return is_batched_indexing(arg) and torch.is_tensor(arg) and arg.dim() == batch_dims and is_bool_indexing(arg)
+
+
+def is_int_indexing(arg):
+    return isinstance(arg, int)
 
 
 def is_list_indexing(arg):
@@ -31,7 +55,14 @@ def is_bool_indexing(arg):
     return (isinstance(arg, np.ndarray) and arg.dtype == np.bool_) or (torch.is_tensor(arg) and arg.dtype == torch.uint8)
 
 
-def expand_index(args, dim):
+def _expand_pytorch_scalar(x):
+    if torch.is_tensor(x):
+        if x.dim() == 0:
+            return int(x.item())
+    return x
+
+
+def canonize_args(args, dim):
     if not isinstance(args, tuple):
         args = (args, )
 
@@ -58,15 +89,10 @@ def expand_index(args, dim):
     return tuple(args)
 
 
-def reverse_slice(s):
-    max_i = (s.stop + 1 - s.start) // s.step
-    return slice(s.start + (max_i) * s.step, s.start + 1, -s.step)
-
-
 def get_vectorized_dims(args, allow_int):
     if allow_int:
-        return [i for i, arg in enumerate(args) if is_list_indexing(arg) or is_bool_indexing(arg) or isinstance(arg, int)]
-    return [i for i, arg in enumerate(args) if is_list_indexing(arg) or is_bool_indexing(arg)]
+        return tuple(i for i, arg in enumerate(args) if is_list_indexing(arg) or is_bool_indexing(arg) or isinstance(arg, int))
+    return tuple(i for i, arg in enumerate(args) if is_list_indexing(arg) or is_bool_indexing(arg))
 
 
 def get_vectorized_new_dim(args, allow_int=False):
@@ -87,6 +113,65 @@ def get_vectorized_new_dim(args, allow_int=False):
     return 0
 
 
+def infer_batch_dims(args):
+    batch_dims = tuple(i for i, arg in enumerate(args) if isinstance(arg, BatchIndicator))
+    if not (len(batch_dims) > 0 and max(batch_dims) == len(batch_dims) - 1):
+        raise IndexError('Batch dimensions must be the first K dimensions.')
+    return len(batch_dims)
+
+
+def validate_batch_dims(args, batch_dims):
+    try:
+        for arg in args:
+            if is_batched_indexing(arg):
+                if isinstance(arg, slice):
+                    for x in (arg.start, arg.stop, arg.step):
+                        if is_batched_indexing(x):
+                            assert torch.is_tensor(x), TypeError('Batched indexing must be torch.tensor.')
+                            assert x.dim() == batch_dims
+                elif is_bool_indexing(arg):
+                    assert torch.is_tensor(arg), TypeError('Batched indexing must be torch.tensor.')
+                    assert arg.dim() == batch_dims
+                else:
+                    assert torch.is_tensor(arg), TypeError('Batched indexing must be torch.tensor.')
+                    assert arg.dim() == batch_dims or arg.dim() == batch_dims + 1
+    except AssertionError as e:
+        if len(e.args) > 0:
+            raise e.args[0] from e
+        raise IndexError('Inconsistent batched indexing.') from e
+
+
+
+def get_batched_vectorized_dims(args, allow_int, batch_dims):
+    if allow_int:
+        return tuple(i for i, arg in enumerate(args) if (
+            is_batched_list_indexing(arg, batch_dims) or is_batched_bool_indexing(arg, batch_dims) or
+            is_batched_int_indexing(arg, batch_dims) or is_int_indexing(arg)
+        ))
+
+    return tuple(i for i, arg in enumerate(args) if (
+        is_batched_list_indexing(arg, batch_dims) or is_batched_bool_indexing(arg, batch_dims)
+    ))
+
+
+def get_batched_vectorized_new_dim(args, batch_dims, allow_int=False):
+    dims = get_batched_vectorized_dims(args, allow_int, batch_dims)
+
+    if len(dims) == 0:
+        return -1
+
+    if not any(is_batched_list_indexing(x, batch_dims) or is_batched_bool_indexing(x, batch_dims) for x in args):
+        return -1
+
+    if len(dims) == max(dims) - min(dims) + 1:
+        ret = min(dims)
+        for i, arg in enumerate(args[:ret]):
+            if is_batched_int_indexing(arg, batch_dims) or is_int_indexing(arg):
+                ret -= 1
+        return ret
+    return batch_dims
+
+
 def insert_dim(x, src, tgt):
     if src == tgt:
         return x
@@ -95,40 +180,4 @@ def insert_dim(x, src, tgt):
     del rng[src]
     rng.insert(tgt, src)
     return x.permute(rng)
-
-
-def reverse(x, dim=-1):
-    """
-    Reverse a tensor along the given dimension. For example, if `dim=0`, it is equivalent to
-    the python notation: `x[::-1]`.
-
-    Args:
-        x (torch.Tensor): input.
-        dim: the dimension to be reversed.
-
-    Returns:
-        torch.Tensor: of same shape as `x`, but with the dimension `dim` reversed.
-
-    """
-    # https://github.com/pytorch/pytorch/issues/229#issuecomment-350041662
-
-    if x.numel() == 0:
-        return x
-
-    xsize = x.size()
-    dim = x.dim() + dim if dim < 0 else dim
-    x = x.view(-1, *xsize[dim:])
-    inds = torch.arange(x.size(1) - 1, -1, -1, dtype=torch.long, device=x.device)
-    x = x.view(x.size(0), x.size(1), -1)[:, inds, :]
-    return x.view(xsize)
-
-
-class IndexWrapper(object):
-    __index_func__ = None
-
-    def __init__(self, tensor):
-        self.tensor = tensor
-
-    def __getitem__(self, args):
-        return type(self).__index_func__(self.tensor, args)
 
