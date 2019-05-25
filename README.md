@@ -25,6 +25,12 @@ assert bint1.shape == (2, 3)
 btindex(a)[batch, batch, blist, 5:bint0:-1, blist]
 ```
 
+Another way to use the package is to run the `torch_index.patch_torch()` function.
+```python
+import torch_index; torch_index.patch_torch()
+a.btindex[batch, batch, blist, 5:bint0:-1, blist]
+```
+
 For more examples and tests, see the `tests/` directory. Run `nosetests` to run all tests.
 
 ## Requirements
