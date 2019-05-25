@@ -12,7 +12,25 @@ from .utils import batch
 from . import basic_functional
 from . import batched_functional
 
-__all__ = ['batch', 'tindex', 'findex', 'vindex', 'oindex', 'btindex', 'bfindex', 'bvindex', 'boindex']
+__all__ = [
+    'patch_torch', 'batch',
+    'tindex', 'findex', 'vindex', 'oindex',
+    'btindex', 'bfindex', 'bvindex', 'boindex'
+]
+
+
+def patch_torch():
+    import torch
+
+    torch.Tensor.tindex = property(lambda self: tindex(self))
+    torch.Tensor.findex = property(lambda self: findex(self))
+    torch.Tensor.vindex = property(lambda self: vindex(self))
+    torch.Tensor.oindex = property(lambda self: oindex(self))
+
+    torch.Tensor.btindex = property(lambda self: btindex(self))
+    torch.Tensor.bfindex = property(lambda self: bfindex(self))
+    torch.Tensor.bvindex = property(lambda self: bvindex(self))
+    torch.Tensor.boindex = property(lambda self: boindex(self))
 
 
 class IndexWrapper(object):
