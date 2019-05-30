@@ -118,6 +118,6 @@ tensor([[[3], [4], [5]],
 
 ## Authors and License
 
-Copyright (c) 2019-, [Jiayuan Mao](https://jiayuanm.com).
+Copyright (c) 2019-, [Jiayuan Mao](http://jiayuanm.com).
 
 Distributed under **MIT License** (See LICENSE)
