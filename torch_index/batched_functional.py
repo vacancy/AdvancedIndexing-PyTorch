@@ -249,7 +249,9 @@ def boindex(value, args, indices_length=None, padding_zero=True):
 
 def bvindex(value, args, indices_length=None, padding_zero=True):
     output, shape, batch_dims, ai, aid = _basic_batched_index(value, args, padding_zero=padding_zero)
-
+    # Hack to make sure shape on same device. _basic_batched_index returns shape on cpu
+    shape.to(output.device)
+    
     if len(ai) == 0:
         return output, shape
 
