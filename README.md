@@ -1,5 +1,5 @@
 # AdvancedIndexing-PyTorch
-(Batched) advanced indexing for PyTorch.
+(Batched) advanced indexing for PyTorch. [Contributors](https://github.com/vacancy/AdvancedIndexing-PyTorch/graphs/contributors)
 
 The `torch_index` package is designed for performing advanced indexing on PyTorch tensors. Beyond the support of basic indexing methods (vectorized indexing, outer indexing, numpy-style indexing, pytorch-style indexing), it also supports **batched** indexing. That is, the indices to the tensor may vary across different batch index.
 
