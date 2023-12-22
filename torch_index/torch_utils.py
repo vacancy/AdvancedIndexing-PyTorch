@@ -19,7 +19,7 @@ import torch
 def concat_shape(*shapes):
     output = []
     for s in shapes:
-        if isinstance(s, collections.Sequence):
+        if isinstance(s, collections.abc.Sequence):
             output.extend(s)
         else:
             output.append(int(s))
