@@ -9,7 +9,7 @@
 # Distributed under terms of the MIT license.
 
 import torch
-from .utils import canonize_args, is_int_indexing, is_list_indexing, is_bool_indexing
+from .utils import canonicalize_args, is_int_indexing, is_list_indexing, is_bool_indexing
 from .utils import get_vectorized_new_dim, insert_dim
 
 
@@ -47,7 +47,7 @@ def reverse(x, dim=-1):
 
 
 def tindex(value, args):
-    args = canonize_args(args, value.dim())
+    args = canonicalize_args(args, value.dim())
 
     new_args = list()
     reversed_dims = list()
@@ -77,7 +77,7 @@ def tindex(value, args):
 
 
 def findex(value, args):
-    args = canonize_args(args, value.dim())
+    args = canonicalize_args(args, value.dim())
 
     new_value = tindex(value, args)
     new_dim = get_vectorized_new_dim(args, True)
@@ -87,7 +87,7 @@ def findex(value, args):
 
 
 def vindex(value, args):
-    args = canonize_args(args, value.dim())
+    args = canonicalize_args(args, value.dim())
 
     new_value = tindex(value, args)
     new_dim = get_vectorized_new_dim(args)
@@ -97,7 +97,7 @@ def vindex(value, args):
 
 
 def oindex(value, args):
-    args = canonize_args(args, value.dim())
+    args = canonicalize_args(args, value.dim())
 
     first = True
     args = list(args)

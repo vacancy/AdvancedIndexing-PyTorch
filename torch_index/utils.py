@@ -62,7 +62,7 @@ def _expand_pytorch_scalar(x):
     return x
 
 
-def canonize_args(args, dim):
+def canonicalize_args(args, dim):
     if not isinstance(args, tuple):
         args = (args, )
 

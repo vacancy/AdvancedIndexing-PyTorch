@@ -13,7 +13,7 @@ import torch
 from .basic_functional import tindex
 from .utils import BatchIndicator
 from .utils import prod
-from .utils import canonize_args, infer_batch_dims, validate_batch_dims
+from .utils import canonicalize_args, infer_batch_dims, validate_batch_dims
 from .utils import is_batched_indexing, is_batched_int_indexing, is_batched_list_indexing, is_batched_bool_indexing, is_int_indexing
 from .utils import get_batched_vectorized_new_dim, insert_dim
 from .torch_utils import add_dim, add_dim_as_except, length2mask
@@ -54,7 +54,7 @@ def batched_index_slice(tensor, start, stop, step, dim, padding_zero=True):
         tensor_shape[dim], prod(tensor_shape[dim+1:])
     )
 
-    def canonize_index(x, default):
+    def canonicalize_index(x, default):
         if x is None:
             return default
         elif isinstance(x, int):
@@ -62,9 +62,9 @@ def batched_index_slice(tensor, start, stop, step, dim, padding_zero=True):
         elif torch.is_tensor(x):
             return x.reshape(-1)
 
-    start = canonize_index(start, 0)
-    stop = canonize_index(stop, tensor_shape[dim])
-    step = canonize_index(step, 1)
+    start = canonicalize_index(start, 0)
+    stop = canonicalize_index(stop, tensor_shape[dim])
+    step = canonicalize_index(step, 1)
 
     step_is_positive = -1 + 2 * (step > 0)
     if torch.is_tensor(step_is_positive):
@@ -163,7 +163,7 @@ def batched_index_vectors(tensor, indices, indices_length, dims, padding_zero=Tr
 
 
 def _basic_batched_index(value, args, padding_zero=True):
-    args = canonize_args(args, value.dim())
+    args = canonicalize_args(args, value.dim())
     batch_dims = infer_batch_dims(args)
 
     assert value.dim() > batch_dims
@@ -269,7 +269,7 @@ def bvindex(value, args, indices_length=None, padding_zero=True):
 
 
 def btindex(value, args, indices_length=None, padding_zero=True):
-    args = canonize_args(args, value.dim())
+    args = canonicalize_args(args, value.dim())
     batch_dims = infer_batch_dims(args)
 
     output, shape = bvindex(value, args, indices_length, padding_zero=padding_zero)
@@ -285,7 +285,7 @@ def btindex(value, args, indices_length=None, padding_zero=True):
 
 
 def bfindex(value, args, indices_length=None, padding_zero=True):
-    args = canonize_args(args, value.dim())
+    args = canonicalize_args(args, value.dim())
     batch_dims = infer_batch_dims(args)
 
     output, shape = bvindex(value, args, indices_length, padding_zero=padding_zero)
